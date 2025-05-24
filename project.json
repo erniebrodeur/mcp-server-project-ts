@@ -1,0 +1,8 @@
+{
+  "name": "example-project",
+  "root": ".",
+  "sourceGlobs": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
+}
