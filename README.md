@@ -1,37 +1,36 @@
 # MCP Server for TypeScript/JavaScript Projects
 
-A **Model Context Protocol (MCP)** server that provides real-time project context indexing for TypeScript and JavaScript workspaces. This server enables LLM agents to efficiently understand your codebase structure without repeatedly parsing files.
+A **Model Context Protocol (MCP)** server that provides efficient file change detection for TypeScript and JavaScript workspaces. This server enables LLM agents to understand when files have changed and get only the updated content, avoiding expensive re-reads of entire codebases.
 
 ## What It Does ✅
 
 ### Core Functionality
-- **🔍 Project Scanning**: Analyzes TypeScript/JavaScript files using `ts-morph` AST parsing
-- **📊 SQLite Index**: Maintains a persistent database of modules, exports, and dependencies  
-- **⚡ Real-time Updates**: Watches files with `chokidar` and tracks changes with dirty-bit semantics
+- **📂 File Watching**: Monitors TypeScript/JavaScript files for changes using `chokidar`
+- **⚡ Change Detection**: Tracks which files are dirty vs. clean to avoid unnecessary reads
+- **📄 Content Serving**: Returns actual file content for changed files only
 - **📦 Dependency Management**: Install/uninstall npm packages via JSON-RPC
-- **🔌 JSON-RPC API**: WebSocket server providing programmatic access to project data
+- **🔌 JSON-RPC API**: WebSocket server providing programmatic access to change status
 
-### Data Indexed
-- **Modules**: File paths and summary comments from each source file
-- **Exports**: All exported declarations (functions, classes, types, etc.) with their types
-- **Dependencies**: npm packages with metadata (version, homepage, repository, docs)
-- **Metadata**: Index version, last scan time, and dirty state tracking
+### Efficient Agent Workflow
+1. **Agent connects** → checks `index.status` to see if any files changed
+2. **If changes detected** → calls `index.refresh` to get content of only changed files
+3. **Agent parses content itself** → no pre-processing, just raw file content
+4. **Massive performance improvement** → no re-reading entire codebase every time
 
 ### Available JSON-RPC Methods
-- `index.status` - Get current index state and dirty status
-- `index.refresh` - Perform incremental update of changed files
+- `index.status` - Get current dirty files list and project state
+- `index.refresh` - Get content of all changed files since last refresh
 - `deps.install` - Install npm packages (with dev dependency support)
 - `deps.uninstall` - Remove npm packages
 
 ## What It Doesn't Do ❌
 
-This is a **context indexing server**, not a full IDE language server. It does not provide:
-- Code completion or IntelliSense
-- Error checking or diagnostics  
-- Refactoring capabilities
-- Debugging features
-- Full-text search (yet - planned for future)
-- Code snippet extraction (yet - planned for future)
+This is a **change detection server**, not a parser or language server. It does not:
+- Parse TypeScript/JavaScript AST (agents do this themselves)
+- Provide code completion or IntelliSense
+- Store parsed data in databases (agents maintain their own state)
+- Pre-process or analyze code structure
+- Provide search functionality (agents read files and search themselves)
 
 ## Installation & Setup
 

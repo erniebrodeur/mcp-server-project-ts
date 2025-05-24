@@ -1,18 +1,19 @@
 /**
- * MCP Server – TypeScript/JavaScript Project Change Tracker
+ * MCP Server – TypeScript/JavaScript Project Change Detector
  * ----------------------------------------------------------
- *  • File‑watch change notifications only
+ *  • File‑watch dirty tracking
  *  • Dependency management via npm
  *  • JSON‑RPC 2.0 over WebSocket:
- *      - index.status     (get list of changed files)
- *      - index.refresh    (clear changed files list)
+ *      - index.status     (get dirty files list)
+ *      - index.refresh    (get content of changed files)
  *      - deps.install     (npm install packages)
  *      - deps.uninstall   (npm uninstall packages)
  *
- * NOTE: Server ONLY tracks which files changed - agents read files themselves.
- * No file content reading, no parsing, just change notifications.
+ * NOTE: Agents read only changed files and do their own parsing.
+ * No AST parsing, no SQLite - just efficient change detection.
  */
 
+import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import chokidar from "chokidar";
@@ -55,6 +56,25 @@ watcher.on("all", (_event, filePath) => {
   markDirty(filePath);
 });
 
+// --------------------------- File content reading --------------------------
+
+async function getFileContent(filePath: string): Promise<{ path: string; content: string } | null> {
+  try {
+    const fullPath = path.join(workspaceRoot, filePath);
+    const content = await fs.readFile(fullPath, 'utf8');
+    return { path: filePath, content };
+  } catch {
+    return null;
+  }
+}
+
+async function getChangedFilesContent(): Promise<Array<{ path: string; content: string }>> {
+  const results = await Promise.all(
+    Array.from(changedFiles).map(getFileContent)
+  );
+  return results.filter((result): result is { path: string; content: string } => result !== null);
+}
+
 // --------------------------- Dependency management -------------------------
 
 async function installDependency(packageName: string, isDev = false): Promise<{ success: boolean; output: string; error?: string }> {
@@ -93,9 +113,8 @@ function getDependencies() {
 
 // ----------------------- Initial state ---------------------------------
 
-console.log("MCP Change Tracker starting...");
+console.log("MCP Server starting...");
 console.log(`Watching workspace: ${workspaceRoot}`);
-console.log("Server will ONLY track file changes - no content reading");
 
 // --------------------------- JSON-RPC server -------------------------------
 
@@ -127,17 +146,17 @@ wss.on("connection", (socket) => {
           break;
         }
         case "index.refresh": {
-          const result = {
-            changedFiles: Array.from(changedFiles),
-            cleared: changedFiles.size
-          };
+          if (changedFiles.size === 0) {
+            socket.send(JSON.stringify(makeResponse(req.id, { files: [] })));
+            break;
+          }
           
-          // Clear the changed files list - agent will read them itself
+          const files = await getChangedFilesContent();
           changedFiles.clear();
           version++;
           lastScan = new Date();
           
-          socket.send(JSON.stringify(makeResponse(req.id, result)));
+          socket.send(JSON.stringify(makeResponse(req.id, { files })));
           break;
         }
         case "deps.install": {
@@ -180,4 +199,4 @@ wss.on("connection", (socket) => {
 });
 
 console.log(`MCP Server listening on ws://localhost:${argv.port}`);
-console.log("Ready to track file changes (file content reading disabled).");
+console.log("Ready to track file changes and serve content to agents.");
