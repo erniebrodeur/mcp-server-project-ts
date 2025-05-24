@@ -16,6 +16,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import chokidar from "chokidar";
+import { execa } from "execa";
 import Database from "better-sqlite3";
 import { Project, ExportedDeclarations } from "ts-morph";
 import { WebSocketServer } from "ws";
@@ -149,6 +150,39 @@ function indexDependencies() {
   }
 }
 
+// --------------------------- Dependency management -------------------------
+
+async function installDependency(packageName: string, isDev = false): Promise<{ success: boolean; output: string; error?: string }> {
+  try {
+    const args = ["install", packageName];
+    if (isDev) {
+      args.push("--save-dev");
+    }
+    
+    const result = await execa("npm", args, { cwd: workspaceRoot });
+    
+    // Re-index dependencies after successful install
+    indexDependencies();
+    
+    return { success: true, output: result.stdout };
+  } catch (error: any) {
+    return { success: false, output: error.stdout || "", error: error.stderr || error.message };
+  }
+}
+
+async function uninstallDependency(packageName: string): Promise<{ success: boolean; output: string; error?: string }> {
+  try {
+    const result = await execa("npm", ["uninstall", packageName], { cwd: workspaceRoot });
+    
+    // Re-index dependencies after successful uninstall
+    indexDependencies();
+    
+    return { success: true, output: result.stdout };
+  } catch (error: any) {
+    return { success: false, output: error.stdout || "", error: error.stderr || error.message };
+  }
+}
+
 // ----------------------- Initial full scan ---------------------------------
 
 console.log("Running initial scan…");
@@ -173,7 +207,7 @@ function makeError(id: number, code: number, msg: string): JsonRpcResponse {
 
 const wss = new WebSocketServer({ port: argv.port });
 wss.on("connection", (socket) => {
-  socket.on("message", (data) => {
+  socket.on("message", async (data) => {
     try {
       const req: JsonRpcRequest = JSON.parse(data.toString());
       switch (req.method) {
@@ -199,6 +233,34 @@ wss.on("connection", (socket) => {
           prepare("UPDATE metadata SET value=value+1 WHERE key='version'").run();
           prepare("UPDATE metadata SET value=datetime('now') WHERE key='lastScan'").run();
           socket.send(JSON.stringify(makeResponse(req.id, { updated })));
+          break;
+        }
+        case "deps.install": {
+          const { packageName, isDev } = req.params || {};
+          if (!packageName || typeof packageName !== "string") {
+            socket.send(JSON.stringify(makeError(req.id, -32602, "Invalid params: packageName required")));
+            break;
+          }
+          try {
+            const result = await installDependency(packageName, Boolean(isDev));
+            socket.send(JSON.stringify(makeResponse(req.id, result)));
+          } catch (err: any) {
+            socket.send(JSON.stringify(makeError(req.id, -32603, "Internal error: " + err.message)));
+          }
+          break;
+        }
+        case "deps.uninstall": {
+          const { packageName } = req.params || {};
+          if (!packageName || typeof packageName !== "string") {
+            socket.send(JSON.stringify(makeError(req.id, -32602, "Invalid params: packageName required")));
+            break;
+          }
+          try {
+            const result = await uninstallDependency(packageName);
+            socket.send(JSON.stringify(makeResponse(req.id, result)));
+          } catch (err: any) {
+            socket.send(JSON.stringify(makeError(req.id, -32603, "Internal error: " + err.message)));
+          }
           break;
         }
         default:
