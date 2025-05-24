@@ -21,7 +21,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
   Tool,
+  Resource,
 } from "@modelcontextprotocol/sdk/types.js";
 import fsSync from "node:fs";
 import path from "node:path";
@@ -109,6 +112,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
   }
 );
@@ -171,10 +175,76 @@ const tools: Tool[] = [
   },
 ];
 
+// ----------------------- Resource Definitions -----------------------------
+
+const resources: Resource[] = [
+  {
+    uri: "file://package.json",
+    name: "Package Configuration",
+    description: "The package.json file containing project metadata, dependencies, scripts, and configuration",
+    mimeType: "application/json",
+  },
+  {
+    uri: "file://tsconfig.json", 
+    name: "TypeScript Configuration",
+    description: "The tsconfig.json file containing TypeScript compiler options and project settings",
+    mimeType: "application/json",
+  },
+];
+
 // ----------------------- Tool Handlers ------------------------------------
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools };
+});
+
+// ----------------------- Resource Handlers --------------------------------
+
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return { resources };
+});
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+
+  switch (uri) {
+    case "file://package.json": {
+      const pkgPath = path.join(workspaceRoot, "package.json");
+      if (!fsSync.existsSync(pkgPath)) {
+        throw new Error("package.json not found in workspace");
+      }
+      const content = fsSync.readFileSync(pkgPath, "utf8");
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: "application/json",
+            text: content,
+          },
+        ],
+      };
+    }
+
+    case "file://tsconfig.json": {
+      const tsconfigPath = path.join(workspaceRoot, "tsconfig.json");
+      if (!fsSync.existsSync(tsconfigPath)) {
+        throw new Error("tsconfig.json not found in workspace");
+      }
+      const content = fsSync.readFileSync(tsconfigPath, "utf8");
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: "application/json", 
+            text: content,
+          },
+        ],
+      };
+    }
+
+    default:
+      throw new Error(`Unknown resource: ${uri}`);
+  }
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -287,6 +357,7 @@ async function main() {
   console.error(`Watching workspace: ${workspaceRoot}`);
   console.error("Server will ONLY track file changes - no content reading");
   console.error("Tools available: get_project_status, refresh_changes, install_dependency, uninstall_dependency");
+  console.error("Resources available: package.json, tsconfig.json");
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
