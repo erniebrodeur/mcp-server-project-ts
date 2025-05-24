@@ -1,27 +1,84 @@
-# MCP Server for TypeScript/JavaScript Projects
+# MCP Project Change Tracker
 
-A **Model Context Protocol (MCP)** server that provides ultra-minimal file change tracking for TypeScript and JavaScript workspaces. This server enables LLM agents to know which files changed without any file content reading or processing.
+A **Model Context Protocol (MCP) compliant server** for TypeScript/JavaScript project change tracking and dependency management.
 
-## What It Does ✅
+## Overview
 
-### Core Functionality
-- **📂 File Watching**: Monitors TypeScript/JavaScript files for changes using `chokidar`
-- **📝 Change Tracking**: Maintains a simple list of changed file paths
-- **📦 Dependency Management**: Install/uninstall npm packages via JSON-RPC
-- **🔌 JSON-RPC API**: WebSocket server providing change notifications
+This MCP server provides AI agents with structured tools to:
+- Track file changes in TypeScript/JavaScript projects
+- Manage npm dependencies
+- Get project status information
+- Clear change tracking state
 
-### Ultra-Efficient Agent Workflow
-1. **Agent connects** → calls `index.status` to see which files changed
-2. **Gets file paths only** → no file content served by server
-3. **Agent reads files itself** → using its own file system access
-4. **Agent clears change list** → calls `index.refresh` to reset tracking
-5. **Minimal overhead** → server only tracks changes, doesn't read source files
+**Key Design Principle**: The server only tracks *which* files have changed, not their content. Agents are expected to read file contents themselves when needed.
 
-### Available JSON-RPC Methods
-- `index.status` - Get list of changed file paths (no content)
-- `index.refresh` - Clear the changed files list and return what was changed
-- `deps.install` - Install npm packages (with dev dependency support)
-- `deps.uninstall` - Remove npm packages
+## MCP Tools Provided
+
+### 1. `get_project_status`
+**Description**: Get comprehensive project status including changed files and dependencies.
+
+**Usage**: 
+```json
+{
+  "name": "get_project_status",
+  "arguments": {}
+}
+```
+
+**Returns**: Information about:
+- Whether there are dirty/changed files
+- Current version number 
+- Last scan timestamp
+- List of changed file paths
+- Installed dependencies
+- Workspace root path
+
+### 2. `refresh_changes`
+**Description**: Clear the changed files list and get information about what was cleared.
+
+**Usage**:
+```json
+{
+  "name": "refresh_changes", 
+  "arguments": {}
+}
+```
+
+**Returns**: Details about cleared files and version increment.
+
+### 3. `install_dependency`
+**Description**: Install npm packages with proper dependency classification.
+
+**Parameters**:
+- `packageName` (required): Name of the npm package
+- `isDev` (optional): Install as dev dependency (default: false)
+
+**Usage**:
+```json
+{
+  "name": "install_dependency",
+  "arguments": {
+    "packageName": "lodash",
+    "isDev": false
+  }
+}
+```
+
+### 4. `uninstall_dependency`
+**Description**: Remove npm packages from the project.
+
+**Parameters**:
+- `packageName` (required): Name of the package to remove
+
+**Usage**:
+```json
+{
+  "name": "uninstall_dependency",
+  "arguments": {
+    "packageName": "lodash"
+  }
+}
+```
 
 ## What It Doesn't Do ❌
 
@@ -140,50 +197,104 @@ After this call, the agent reads `src/app.ts` and `src/utils.ts` itself using it
 }
 ```
 
+## Installation & Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+```
+
+## Usage with MCP Clients
+
+### As MCP Server (Recommended)
+
+The server uses **stdio transport** as per MCP specification:
+
+```bash
+# Run the server with required workspace parameter
+node dist/index.js --workspaceRoot /path/to/your/project
+```
+
+### Integration Examples
+
+**With MCP-compatible AI applications** (Claude Desktop, Cursor, etc.):
+
+```json
+{
+  "mcpServers": {
+    "project-tracker": {
+      "command": "node",
+      "args": ["/path/to/dist/index.js", "--workspaceRoot", "/path/to/project"]
+    }
+  }
+}
+```
+
+**With OpenAI Agents SDK**:
+```python
+from openai_agents_python.mcp import MCPServerStdio
+
+async with MCPServerStdio(
+    params={
+        "command": "node",
+        "args": ["/path/to/dist/index.js", "--workspaceRoot", "/path/to/project"],
+    }
+) as server:
+    tools = await server.list_tools()
+    # Use tools in your agent
+```
+
+## File Watching
+
+The server automatically watches for changes in:
+- `**/*.{ts,tsx,js,jsx}` - TypeScript/JavaScript source files
+- `package.json` - Main package configuration
+- `package-lock.json` - npm lock file  
+- `pnpm-lock.yaml` - pnpm lock file
+- `tsconfig.*` - TypeScript configuration files
+
+**Excluded**: `node_modules` directories
+
 ## Architecture
 
+This is a **proper MCP server** that follows the Model Context Protocol specification:
+
+- **Transport**: stdio (standard input/output)
+- **Protocol**: JSON-RPC 2.0 as defined by MCP
+- **Capabilities**: Tools with structured schemas and descriptions
+- **Discoverability**: Tools are self-describing with input schemas
+
+## Development
+
+```bash
+# Development mode with auto-restart
+npm run dev -- --workspaceRoot .
+
+# Build for production
+npm run build
+
+# Test the server
+node test-mcp-client.js
 ```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Your Project  │───▶│  MCP Server  │───▶│    Agent    │
-│  (TypeScript/   │    │              │    │             │
-│   JavaScript)   │    │ • chokidar   │    │ Reads files │
-└─────────────────┘    │ • WebSocket  │    │ itself via  │
-         │              │ • Change     │    │ filesystem  │
-         │              │   tracking   │    │ access      │
-         ▼              └──────────────┘    └─────────────┘
-   File changes              │
-   detected by              ▼
-   chokidar            Change notifications
-                       (file paths only)
-```
 
-### Key Principles
-- **Minimal overhead**: Server only tracks which files changed
-- **No file reading**: Agents read files themselves when needed
-- **Change notifications**: Server tells agents what to read
-- **Dependency management**: Server can install/uninstall packages
+## Benefits of MCP Compliance
 
-## Integration with LLM Agents
+1. **Standardization**: Works with any MCP-compatible client
+2. **Discoverability**: Tools are self-describing with schemas
+3. **Type Safety**: Input validation via JSON schemas
+4. **Instructions**: Built-in documentation for AI agents
+5. **Interoperability**: Part of the growing MCP ecosystem
 
-This server is designed to work with LLM-powered coding agents that need efficient access to project structure. Instead of agents repeatedly reading and parsing files, they can:
+## Comparison to WebSocket Version
 
-1. Check `index.status` to see if data is current
-2. Call `index.refresh` if files have changed  
-3. Query the SQLite database directly for project information
-4. Install/remove dependencies as needed during development
+The previous WebSocket implementation provided similar functionality but lacked:
+- Standardized tool discovery
+- Input validation schemas  
+- Structured tool descriptions
+- MCP ecosystem compatibility
+- Built-in agent instructions
 
-## Roadmap
-
-Future enhancements may include:
-- `search.query` - Semantic code search across the project
-- `snippet.fetch` - Extract and return specific code snippets
-- `symbol.find` - Locate symbol definitions and references
-- `docs.generate` - Generate documentation from code
-
-## Contributing
-
-This server provides a solid foundation for LLM-assisted development tools. The modular design makes it easy to extend with additional indexing capabilities or JSON-RPC methods.
-
-## License
-
-MIT License - see LICENSE file for details.
+This MCP version provides the same core functionality with much better AI agent integration.
