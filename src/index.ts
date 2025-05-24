@@ -1,15 +1,18 @@
 /**
- * MCP Server – minimal functional prototype
- * -----------------------------------------
+ * MCP Server – TypeScript/JavaScript Project Context Indexer
+ * ----------------------------------------------------------
  *  • Initial project scan with ts‑morph
  *  • SQLite persistence (schema auto‑applied)
  *  • File‑watch dirty tracking
+ *  • Dependency management via npm
  *  • JSON‑RPC 2.0 over WebSocket:
- *      - index.status
- *      - index.refresh
+ *      - index.status     (get index state & dirty status)
+ *      - index.refresh    (incremental update of changed files)
+ *      - deps.install     (npm install packages)
+ *      - deps.uninstall   (npm uninstall packages)
  *
- * NOTE: this is still a prototype; search.query, snippet.fetch, etc. are
- * placeholders but the core index workflow is operational.
+ * NOTE: This covers the core indexing and dependency management workflow.
+ * Future expansions could include search.query, snippet.fetch, etc.
  */
 
 import fs from "node:fs";
