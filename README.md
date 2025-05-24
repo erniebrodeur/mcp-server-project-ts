@@ -1,36 +1,37 @@
 # MCP Server for TypeScript/JavaScript Projects
 
-A **Model Context Protocol (MCP)** server that provides efficient file change detection for TypeScript and JavaScript workspaces. This server enables LLM agents to understand when files have changed and get only the updated content, avoiding expensive re-reads of entire codebases.
+A **Model Context Protocol (MCP)** server that provides ultra-minimal file change tracking for TypeScript and JavaScript workspaces. This server enables LLM agents to know which files changed without any file content reading or processing.
 
 ## What It Does ✅
 
 ### Core Functionality
 - **📂 File Watching**: Monitors TypeScript/JavaScript files for changes using `chokidar`
-- **⚡ Change Detection**: Tracks which files are dirty vs. clean to avoid unnecessary reads
-- **📄 Content Serving**: Returns actual file content for changed files only
+- **📝 Change Tracking**: Maintains a simple list of changed file paths
 - **📦 Dependency Management**: Install/uninstall npm packages via JSON-RPC
-- **🔌 JSON-RPC API**: WebSocket server providing programmatic access to change status
+- **🔌 JSON-RPC API**: WebSocket server providing change notifications
 
-### Efficient Agent Workflow
-1. **Agent connects** → checks `index.status` to see if any files changed
-2. **If changes detected** → calls `index.refresh` to get content of only changed files
-3. **Agent parses content itself** → no pre-processing, just raw file content
-4. **Massive performance improvement** → no re-reading entire codebase every time
+### Ultra-Efficient Agent Workflow
+1. **Agent connects** → calls `index.status` to see which files changed
+2. **Gets file paths only** → no file content served by server
+3. **Agent reads files itself** → using its own file system access
+4. **Agent clears change list** → calls `index.refresh` to reset tracking
+5. **Minimal overhead** → server only tracks changes, doesn't read source files
 
 ### Available JSON-RPC Methods
-- `index.status` - Get current dirty files list and project state
-- `index.refresh` - Get content of all changed files since last refresh
+- `index.status` - Get list of changed file paths (no content)
+- `index.refresh` - Clear the changed files list and return what was changed
 - `deps.install` - Install npm packages (with dev dependency support)
 - `deps.uninstall` - Remove npm packages
 
 ## What It Doesn't Do ❌
 
-This is a **change detection server**, not a parser or language server. It does not:
-- Parse TypeScript/JavaScript AST (agents do this themselves)
+This is a **change notification server** - it does NOT:
+- Read source file content (agents do this themselves)
+- Parse TypeScript/JavaScript AST 
+- Store file content or parsed data
 - Provide code completion or IntelliSense
-- Store parsed data in databases (agents maintain their own state)
 - Pre-process or analyze code structure
-- Provide search functionality (agents read files and search themselves)
+- Search functionality
 
 ## Installation & Setup
 
@@ -63,19 +64,28 @@ npm run watch -- --workspaceRoot /path/to/your/project
 
 ## Usage
 
-### Command Line Options
+## Usage
+
+### Command Line
 ```bash
-node dist/index.js --workspaceRoot <path> [--port <number>]
+# Build the server
+npm run build
+
+# Start the server (pointing to your project)
+npm start -- --workspaceRoot /path/to/your/project --port 31337
 ```
 
-- `--workspaceRoot` (required): Absolute path to your TypeScript/JavaScript project
-- `--port` (optional): WebSocket port number (default: 31337)
+### Development Mode
+```bash
+# Watch mode for development
+npm run watch -- --workspaceRoot /path/to/your/project
+```
 
-### JSON-RPC API Examples
+## JSON-RPC API Examples
 
 Connect to `ws://localhost:31337` and send JSON-RPC 2.0 messages:
 
-#### Check Index Status
+#### Check What Files Changed
 ```json
 {
   "id": 1,
@@ -88,15 +98,16 @@ Response:
 {
   "id": 1,
   "result": {
-    "dirty": false,
-    "version": 3,
-    "lastScan": "2025-05-24 10:30:00",
-    "changedFiles": []
+    "dirty": true,
+    "version": 5,
+    "lastScan": "2025-05-24T10:30:00.000Z",
+    "changedFiles": ["src/app.ts", "src/utils.ts"],
+    "dependencies": { "react": "^18.0.0", "typescript": "^5.0.0" }
   }
 }
 ```
 
-#### Refresh Changed Files
+#### Clear Changed Files List
 ```json
 {
   "id": 2,
@@ -104,7 +115,20 @@ Response:
 }
 ```
 
-#### Install Dependencies
+Response:
+```json
+{
+  "id": 2,
+  "result": {
+    "changedFiles": ["src/app.ts", "src/utils.ts"],
+    "cleared": 2
+  }
+}
+```
+
+After this call, the agent reads `src/app.ts` and `src/utils.ts` itself using its own file system access.
+
+#### Install/Uninstall Dependencies
 ```json
 {
   "id": 3,
@@ -116,48 +140,28 @@ Response:
 }
 ```
 
-#### Uninstall Dependencies
-```json
-{
-  "id": 4,
-  "method": "deps.uninstall", 
-  "params": {
-    "packageName": "lodash"
-  }
-}
-```
-
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Your Project  │───▶│  MCP Server  │───▶│  SQLite DB  │
-│  (TypeScript/   │    │              │    │   (.mcp_    │
-│   JavaScript)   │    │  • ts-morph  │    │   index.    │
-└─────────────────┘    │  • chokidar  │    │   sqlite)   │
-                       │  • WebSocket │    │             │
-                       └──────────────┘    └─────────────┘
-                              │
-                              ▼
-                       ┌──────────────┐
-                       │  LLM Agent   │
-                       │  (via JSON-  │
-                       │   RPC 2.0)   │
-                       └──────────────┘
+│   Your Project  │───▶│  MCP Server  │───▶│    Agent    │
+│  (TypeScript/   │    │              │    │             │
+│   JavaScript)   │    │ • chokidar   │    │ Reads files │
+└─────────────────┘    │ • WebSocket  │    │ itself via  │
+         │              │ • Change     │    │ filesystem  │
+         │              │   tracking   │    │ access      │
+         ▼              └──────────────┘    └─────────────┘
+   File changes              │
+   detected by              ▼
+   chokidar            Change notifications
+                       (file paths only)
 ```
 
-### File Structure
-- `src/index.ts` - Main server implementation
-- `schema.sql` - SQLite database schema  
-- `package.json` - Dependencies and scripts
-- `tsconfig.json` - TypeScript configuration
-
-### Database Schema
-The server creates a `.mcp_index.sqlite` file in your project root with tables for:
-- `metadata` - Index version and state tracking
-- `modules` - Source file information  
-- `exports` - Exported declarations from each module
-- `deps` - npm dependencies with metadata
+### Key Principles
+- **Minimal overhead**: Server only tracks which files changed
+- **No file reading**: Agents read files themselves when needed
+- **Change notifications**: Server tells agents what to read
+- **Dependency management**: Server can install/uninstall packages
 
 ## Integration with LLM Agents
 
