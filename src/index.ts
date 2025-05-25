@@ -24,6 +24,7 @@ import { NpmManager } from "./dependencies/npm-manager.js";
 import { FileUtils } from "./utils/file-utils.js";
 import { CacheManager } from "./cache/cache-manager.js";
 import { FileMetadataService } from "./cache/file-metadata.js";
+import { OperationCache } from "./cache/operation-cache.js";
 
 async function main() {
   // Parse CLI arguments and setup configuration
@@ -46,6 +47,7 @@ async function main() {
     maxKeys: 1000,
   });
   const fileMetadataService = new FileMetadataService(cacheManager);
+  const operationCache = new OperationCache(cacheManager, fileMetadataService);
 
   // Setup file watching
   fileWatcher.start(workspaceRoot, config);
@@ -53,11 +55,13 @@ async function main() {
     changeTracker.markDirty(filePath);
     // Clear cache for changed files
     fileMetadataService.clearMetadataCache(filePath);
+    // Invalidate operation cache for changed files
+    operationCache.invalidateByFiles([filePath]);
   });
 
   // Create and configure MCP server
   const server = createMcpServer();
-  setupServerHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, workspaceRoot);
+  setupServerHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, cacheManager, workspaceRoot);
 
   // Start the server
   await startServer(server);
