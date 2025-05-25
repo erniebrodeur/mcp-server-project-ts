@@ -40,6 +40,7 @@ export async function startServer(server: Server): Promise<void> {
   console.error("Server will ONLY track file changes - no content reading");
   console.error("Tools available: get_project_status, refresh_changes, install_dependency, uninstall_dependency, get_file_metadata, has_file_changed");
   console.error("Phase 3 Cache Tools: cache_typescript_check, cache_lint_results, cache_test_results, get_cached_operation");
+  console.error("Phase 4 Summary Tools: get_project_outline, get_file_summary");
   console.error("Resources available: package.json, tsconfig.json");
 
   const transport = new StdioServerTransport();

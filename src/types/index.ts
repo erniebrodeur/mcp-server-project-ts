@@ -17,6 +17,14 @@ export type {
   ICacheManager,
   IFileMetadataService,
   IOperationCache,
+  // Phase 4: Project Analysis types
+  ProjectOutline,
+  DirectoryNode,
+  ProjectStats,
+  FileType,
+  FileSummary,
+  IProjectAnalysis,
+  ProjectOutlineOptions,
 } from "./cache.js";
 
 export interface ProjectStatus {

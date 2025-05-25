@@ -7,6 +7,8 @@ import type { IChangeTracker, INpmManager, IFileUtils, ToolHandler, IFileMetadat
 import { TypeScriptCache } from "../cache/typescript-cache.js";
 import { LintCache } from "../cache/lint-cache.js";
 import { TestCache } from "../cache/test-cache.js";
+import { ProjectOutlineGenerator } from "../analysis/project-outline.js";
+import { FileSummaryGenerator } from "../analysis/file-summary.js";
 
 export const tools: Tool[] = [
   {
@@ -166,6 +168,60 @@ export const tools: Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "get_project_outline",
+    description: "Generate a high-level project structure overview without reading file contents. Shows directory tree, file types distribution, and project statistics with caching for performance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        maxDepth: {
+          type: "number",
+          description: "Maximum directory depth to traverse (default: 10)",
+          default: 10,
+        },
+        excludePatterns: {
+          type: "array",
+          items: {
+            type: "string"
+          },
+          description: "Glob patterns to exclude (default: ['node_modules/**', 'dist/**', 'build/**', '.git/**'])",
+          default: ["node_modules/**", "dist/**", "build/**", ".git/**"],
+        },
+        includeHidden: {
+          type: "boolean",
+          description: "Include hidden files and directories (default: false)",
+          default: false,
+        },
+        includeSizes: {
+          type: "boolean",
+          description: "Include file sizes in the output (default: true)",
+          default: true,
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_file_summary",
+    description: "Get a lightweight summary of a file including its type, exports, imports, and complexity without loading full content. Useful for understanding file purpose quickly.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filePath: {
+          type: "string",
+          description: "Path to the file to summarize",
+        },
+        filePaths: {
+          type: "array",
+          items: {
+            type: "string"
+          },
+          description: "Array of file paths to summarize (alternative to single filePath)",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 export function createToolHandlers(
@@ -180,6 +236,10 @@ export function createToolHandlers(
   const typeScriptCache = new TypeScriptCache(cacheManager, fileMetadataService, workspaceRoot);
   const lintCache = new LintCache(cacheManager, fileMetadataService, workspaceRoot);
   const testCache = new TestCache(cacheManager, fileMetadataService, workspaceRoot);
+
+  // Initialize Phase 4 analysis services
+  const projectOutlineGenerator = new ProjectOutlineGenerator(cacheManager, fileMetadataService, workspaceRoot);
+  const fileSummaryGenerator = new FileSummaryGenerator(cacheManager, fileMetadataService, workspaceRoot);
 
   const handlers: Record<string, ToolHandler> = {
     get_project_status: async () => {
@@ -483,6 +543,154 @@ ${JSON.stringify(cachedResult, null, 2)}`,
         };
       } catch (error: any) {
         throw new Error(`Failed to get cached operation: ${error.message}`);
+      }
+    },
+
+    get_project_outline: async (args: any) => {
+      try {
+        const { maxDepth, excludePatterns, includeHidden, includeSizes } = args as {
+          maxDepth?: number;
+          excludePatterns?: string[];
+          includeHidden?: boolean;
+          includeSizes?: boolean;
+        };
+
+        const outline = await projectOutlineGenerator.getProjectOutline({
+          maxDepth,
+          excludePatterns,
+          includeHidden,
+          includeSizes,
+        });
+
+        // Helper function to format bytes
+        const formatBytes = (bytes: number): string => {
+          if (bytes === 0) return '0 B';
+          const k = 1024;
+          const sizes = ['B', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+        };
+
+        // Helper function to format directory tree
+        const formatDirectoryTree = (node: any, depth: number = 0): string => {
+          const indent = '  '.repeat(depth);
+          const icon = node.type === 'directory' ? '📁' : '📄';
+          const sizeInfo = node.size ? ` (${formatBytes(node.size)})` : '';
+          let result = `${indent}${icon} ${node.name}${sizeInfo}\n`;
+          
+          if (node.children) {
+            for (const child of node.children) {
+              result += formatDirectoryTree(child, depth + 1);
+            }
+          }
+          
+          return result;
+        };
+
+        const treeView = formatDirectoryTree(outline.structure);
+        
+        const fileTypesList = Object.entries(outline.fileTypes)
+          .sort(([,a], [,b]) => b - a)
+          .map(([type, count]) => `  ${type}: ${count} files`)
+          .join('\n');
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Project Outline (Generated: ${outline.timestamp.toISOString()})
+
+📊 Project Statistics:
+  Total Files: ${outline.stats.totalFiles}
+  Total Directories: ${outline.stats.totalDirectories}
+  Total Size: ${formatBytes(outline.stats.totalSize)}
+
+📋 File Types Distribution:
+${fileTypesList}
+
+🌳 Directory Structure:
+${treeView}
+
+Raw Data:
+${JSON.stringify(outline, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Failed to generate project outline: ${error.message}`);
+      }
+    },
+
+    get_file_summary: async (args: any) => {
+      try {
+        const { filePath, filePaths } = args as {
+          filePath?: string;
+          filePaths?: string[];
+        };
+
+        if (filePath && filePaths) {
+          throw new Error("Provide either filePath or filePaths, not both");
+        }
+
+        if (!filePath && !filePaths) {
+          throw new Error("Either filePath or filePaths is required");
+        }
+
+        if (filePath) {
+          // Single file summary
+          const summary = await fileSummaryGenerator.getFileSummary(filePath);
+          
+          const exports = summary.exports || [];
+          const imports = summary.imports || [];
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `File Summary for: ${summary.path}
+
+📄 File Type: ${summary.fileType}
+📏 Size: ${summary.size} bytes
+⚡ Complexity: ${summary.complexity || 'unknown'}
+🕒 Last Modified: ${summary.lastModified.toISOString()}
+
+${summary.description ? `📝 Description: ${summary.description}\n` : ''}
+📤 Exports (${exports.length}): ${exports.length > 0 ? '\n  ' + exports.join('\n  ') : 'none'}
+
+📥 Imports (${imports.length}): ${imports.length > 0 ? '\n  ' + imports.join('\n  ') : 'none'}
+
+Raw Data:
+${JSON.stringify(summary, null, 2)}`,
+              },
+            ],
+          };
+        } else {
+          // Multiple files summary
+          const summaries = await fileSummaryGenerator.getFileSummaries(filePaths!);
+          
+          const summaryText = summaries.map(summary => {
+            const exports = summary.exports || [];
+            const imports = summary.imports || [];
+            return `📄 ${summary.path} (${summary.fileType}, ${summary.size} bytes, ${summary.complexity || 'unknown'} complexity)
+   Exports: ${exports.length} | Imports: ${imports.length}${summary.description ? `\n   ${summary.description}` : ''}`;
+          }).join('\n\n');
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: `File Summaries for ${summaries.length} files:
+
+${summaryText}
+
+Raw Data:
+${JSON.stringify(summaries, null, 2)}`,
+              },
+            ],
+          };
+        }
+      } catch (error: any) {
+        throw new Error(`Failed to generate file summary: ${error.message}`);
       }
     },
   };

@@ -125,5 +125,63 @@ export interface IOperationCache {
   getOperationStats(operationType: OperationType): { hits: number; misses: number };
 }
 
+// Phase 4: Project State Summary Types
+
+export interface ProjectOutline {
+  structure: DirectoryNode;
+  stats: ProjectStats;
+  fileTypes: Record<string, number>;
+  timestamp: Date;
+}
+
+export interface DirectoryNode {
+  name: string;
+  type: 'directory' | 'file';
+  path: string;
+  children?: DirectoryNode[];
+  fileType?: FileType;
+  size?: number;
+}
+
+export interface ProjectStats {
+  totalFiles: number;
+  totalDirectories: number;
+  totalSize: number;
+  filesByExtension: Record<string, number>;
+  largestFiles: Array<{ path: string; size: number }>;
+}
+
+export type FileType = 
+  | 'typescript' | 'javascript' | 'jsx' | 'tsx'
+  | 'config' | 'test' | 'documentation' | 'style'
+  | 'asset' | 'data' | 'build' | 'other';
+
+export interface FileSummary {
+  path: string;
+  fileType: FileType;
+  exports?: string[];
+  imports?: string[];
+  description?: string;
+  size: number;
+  lastModified: Date;
+  contentHash: string;
+  complexity?: 'low' | 'medium' | 'high';
+}
+
+export interface IProjectAnalysis {
+  getProjectOutline(options?: ProjectOutlineOptions): Promise<ProjectOutline>;
+  getFileSummary(filePath: string): Promise<FileSummary>;
+  getFileSummaries(filePaths: string[]): Promise<FileSummary[]>;
+  classifyFileType(filePath: string): FileType;
+  clearAnalysisCache(filePath?: string): void;
+}
+
+export interface ProjectOutlineOptions {
+  maxDepth?: number;
+  excludePatterns?: string[];
+  includeHidden?: boolean;
+  includeSizes?: boolean;
+}
+
 // Ensure this file is treated as a module
 export {};
