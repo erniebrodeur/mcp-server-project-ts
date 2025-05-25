@@ -25,6 +25,12 @@ import { FileUtils } from "./utils/file-utils.js";
 import { CacheManager } from "./cache/cache-manager.js";
 import { FileMetadataService } from "./cache/file-metadata.js";
 import { OperationCache } from "./cache/operation-cache.js";
+import { CachedResourceManager } from "./cache/cached-resource-manager.js";
+import { TypeScriptCache } from "./cache/typescript-cache.js";
+import { LintCache } from "./cache/lint-cache.js";
+import { TestCache } from "./cache/test-cache.js";
+import { ProjectOutlineGenerator } from "./analysis/project-outline.js";
+import { FileSummaryGenerator } from "./analysis/file-summary.js";
 
 async function main() {
   // Parse CLI arguments and setup configuration
@@ -39,7 +45,6 @@ async function main() {
   const npmManager = new NpmManager(workspaceRoot);
   const fileUtils = new FileUtils();
   
-  // Initialize cache services
   const cacheManager = new CacheManager({
     fileMetadataTTL: 300, // 5 minutes
     operationResultTTL: 1800, // 30 minutes
@@ -48,6 +53,27 @@ async function main() {
   });
   const fileMetadataService = new FileMetadataService(cacheManager);
   const operationCache = new OperationCache(cacheManager, fileMetadataService);
+
+  // Initialize Phase 3 cache services
+  const typescriptCache = new TypeScriptCache(cacheManager, fileMetadataService, workspaceRoot);
+  const lintCache = new LintCache(cacheManager, fileMetadataService, workspaceRoot);
+  const testCache = new TestCache(cacheManager, fileMetadataService, workspaceRoot);
+
+  // Initialize Phase 4 analysis services
+  const projectOutlineGenerator = new ProjectOutlineGenerator(cacheManager, fileMetadataService, workspaceRoot);
+  const fileSummaryGenerator = new FileSummaryGenerator(cacheManager, fileMetadataService, workspaceRoot);
+
+  // Initialize Phase 5 cached resource manager
+  const cachedResourceManager = new CachedResourceManager(
+    cacheManager,
+    fileMetadataService,
+    typescriptCache,
+    lintCache,
+    testCache,
+    projectOutlineGenerator,
+    fileSummaryGenerator,
+    workspaceRoot
+  );
 
   // Setup file watching
   fileWatcher.start(workspaceRoot, config);
@@ -61,7 +87,16 @@ async function main() {
 
   // Create and configure MCP server
   const server = createMcpServer();
-  setupServerHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, cacheManager, workspaceRoot);
+  setupServerHandlers(
+    server, 
+    changeTracker, 
+    npmManager, 
+    fileUtils, 
+    fileMetadataService, 
+    cacheManager, 
+    workspaceRoot,
+    cachedResourceManager
+  );
 
   // Start the server
   await startServer(server);

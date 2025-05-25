@@ -25,6 +25,12 @@ export type {
   FileSummary,
   IProjectAnalysis,
   ProjectOutlineOptions,
+  // Phase 5: Resource types
+  CachedResourceData,
+  MetadataResource,
+  ProjectStructureResource,
+  CacheResourceSummary,
+  ICachedResourceManager,
 } from "./cache.js";
 
 export interface ProjectStatus {

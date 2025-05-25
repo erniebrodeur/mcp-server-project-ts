@@ -183,5 +183,63 @@ export interface ProjectOutlineOptions {
   includeSizes?: boolean;
 }
 
+// Phase 5: Anti-Duplication Resource Types
+
+export interface CachedResourceData {
+  uri: string;
+  lastUpdated: Date;
+  cacheKey: string;
+  version: string;
+  data: any;
+}
+
+export interface MetadataResource {
+  files: Record<string, {
+    hash: string;
+    size: number;
+    lastModified: Date;
+    path: string;
+  }>;
+  lastUpdated: Date;
+  totalFiles: number;
+}
+
+export interface ProjectStructureResource {
+  structure: DirectoryNode;
+  stats: ProjectStats;
+  lastUpdated: Date;
+  version: string;
+}
+
+export interface CacheResourceSummary {
+  typescript?: {
+    lastRun: Date;
+    success: boolean;
+    issueCount: number;
+    version: string;
+  };
+  lint?: {
+    lastRun: Date;
+    totalFiles: number;
+    issuesCount: number;
+    version: string;
+  };
+  test?: {
+    lastRun: Date;
+    totalTests: number;
+    passed: number;
+    failed: number;
+    version: string;
+  };
+}
+
+export interface ICachedResourceManager {
+  generateCacheResource(cacheType: 'typescript' | 'lint' | 'test'): Promise<CachedResourceData | null>;
+  generateMetadataResource(resourceType: 'file-hashes' | 'project-structure'): Promise<CachedResourceData>;
+  getResourceVersion(resourceUri: string): string;
+  isResourceStale(resourceUri: string, maxAge?: number): Promise<boolean>;
+  getCacheResourceSummary(): Promise<CacheResourceSummary>;
+}
+
 // Ensure this file is treated as a module
 export {};
