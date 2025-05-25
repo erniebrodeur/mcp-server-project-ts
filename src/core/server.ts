@@ -3,7 +3,7 @@
  */
 
 import { Server, StdioServerTransport } from "../types/mcp.js";
-import type { IChangeTracker, INpmManager, IFileUtils, IFileMetadataService, ICacheManager, ICachedResourceManager } from "../types/index.js";
+import type { IChangeTracker, INpmManager, IFileUtils, IFileMetadataService, ICacheManager, ICachedResourceManager, ICacheMonitor } from "../types/index.js";
 import { registerToolHandlers } from "../handlers/tools.js";
 import { registerResourceHandlers } from "../handlers/resources.js";
 
@@ -29,10 +29,11 @@ export function setupServerHandlers(
   fileUtils: IFileUtils,
   fileMetadataService: IFileMetadataService,
   cacheManager: ICacheManager,
+  cacheMonitor: ICacheMonitor,
   workspaceRoot: string,
   cachedResourceManager: ICachedResourceManager
 ): void {
-  registerToolHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, cacheManager, workspaceRoot);
+  registerToolHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, cacheManager, cacheMonitor, workspaceRoot);
   registerResourceHandlers(server, fileUtils, workspaceRoot, cachedResourceManager);
 }
 
@@ -44,6 +45,7 @@ export async function startServer(server: Server): Promise<void> {
   console.error("Phase 4 Summary Tools: get_project_outline, get_file_summary");
   console.error("Phase 5 Cache Resources: cache://typescript-errors, cache://lint-results, cache://test-results");
   console.error("Phase 5 Metadata Resources: metadata://file-hashes, metadata://project-structure");
+  console.error("Phase 6 Cache Management: clear_cache, get_cache_stats, warm_cache");
   console.error("Resources available: package.json, tsconfig.json");
 
   const transport = new StdioServerTransport();

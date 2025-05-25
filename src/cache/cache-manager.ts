@@ -17,6 +17,18 @@ export class CacheManager implements ICacheManager {
       maxKeys: 1000,
       checkPeriod: 120, // 2 minutes
       useClones: false, // Better performance, but be careful with object mutations
+      // Phase 6: Cache warming settings
+      enableWarmup: true,
+      warmupBatchSize: 50,
+      warmupDelay: 100, // ms between batches
+      // Auto-cleanup settings
+      enableAutoCleanup: true,
+      cleanupThreshold: 0.8, // Memory usage threshold (0-1)
+      cleanupInterval: 30000, // ms between cleanup checks (30 seconds)
+      // Performance monitoring
+      enableMonitoring: true,
+      monitoringInterval: 10000, // ms between monitoring checks (10 seconds)
+      logPerformanceThreshold: 0.7, // Hit rate threshold for logging warnings (0-1)
     };
 
     const finalConfig = { ...defaultConfig, ...config };

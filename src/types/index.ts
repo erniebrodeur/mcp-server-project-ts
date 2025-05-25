@@ -31,6 +31,10 @@ export type {
   ProjectStructureResource,
   CacheResourceSummary,
   ICachedResourceManager,
+  // Phase 6: Cache monitoring types
+  ICacheMonitor,
+  CacheMonitoringData,
+  CacheHealthMetrics,
 } from "./cache.js";
 
 export interface ProjectStatus {

@@ -22,6 +22,21 @@ export interface CacheConfiguration {
   
   // Performance settings
   useClones: boolean; // Whether to clone objects when storing/retrieving
+  
+  // Cache warming settings
+  enableWarmup: boolean;
+  warmupBatchSize: number;
+  warmupDelay: number; // ms between batches
+  
+  // Auto-cleanup settings
+  enableAutoCleanup: boolean;
+  cleanupThreshold: number; // Memory usage threshold (0-1)
+  cleanupInterval: number; // ms between cleanup checks
+  
+  // Performance monitoring
+  enableMonitoring: boolean;
+  monitoringInterval: number; // ms between monitoring checks
+  logPerformanceThreshold: number; // Hit rate threshold for logging warnings (0-1)
 }
 
 export interface CacheStats {
@@ -116,6 +131,7 @@ export interface IFileMetadataService {
   compareWithHashes(filePathsWithHashes: Record<string, string>): Promise<BatchFileChangeResult>;
   calculateHash(filePath: string): Promise<string>;
   clearMetadataCache(filePath?: string): void;
+  warmCache(filePaths: string[]): Promise<void>;
 }
 
 export interface IOperationCache {
@@ -239,6 +255,40 @@ export interface ICachedResourceManager {
   getResourceVersion(resourceUri: string): string;
   isResourceStale(resourceUri: string, maxAge?: number): Promise<boolean>;
   getCacheResourceSummary(): Promise<CacheResourceSummary>;
+}
+
+// Monitoring and Health Metrics Interfaces
+
+export interface ICacheMonitor {
+  startMonitoring(): void;
+  stopMonitoring(): void;
+  startAutoCleanup(): void;
+  stopAutoCleanup(): void;
+  getHealthMetrics(): CacheHealthMetrics;
+  getCurrentMonitoringData(): CacheMonitoringData;
+  getPerformanceHistory(limit?: number): CacheMonitoringData[];
+  performCleanup(strategy?: 'lru' | 'size' | 'age' | 'pattern', options?: any): number;
+  generatePerformanceReport(): string;
+  dispose(): void;
+}
+
+export interface CacheMonitoringData {
+  timestamp: Date;
+  stats: CacheStats;
+  health: CacheHealthMetrics;
+  memoryUsageBytes: number;
+  operationsPerSecond: number;
+  averageResponseTime: number;
+}
+
+export interface CacheHealthMetrics {
+  efficiency: number; // Hit rate (0-1)
+  memoryUsage: number; // Memory usage percentage (0-1)
+  keyCount: number;
+  uptime: number; // Uptime in milliseconds
+  status: 'healthy' | 'warning' | 'critical';
+  lastUpdated: Date;
+  recommendations: string[];
 }
 
 // Ensure this file is treated as a module

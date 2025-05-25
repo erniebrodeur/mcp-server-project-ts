@@ -16,13 +16,14 @@
  * No file content reading, no parsing, just change notifications.
  */
 
-import { parseCliArgs, createServerConfig } from "./core/config.js";
+import { parseCliArgs, createServerConfig, createCacheConfig } from "./core/config.js";
 import { createMcpServer, setupServerHandlers, startServer } from "./core/server.js";
 import { FileWatcher } from "./tracking/file-watcher.js";
 import { ChangeTracker } from "./tracking/change-tracker.js";
 import { NpmManager } from "./dependencies/npm-manager.js";
 import { FileUtils } from "./utils/file-utils.js";
 import { CacheManager } from "./cache/cache-manager.js";
+import { CacheMonitor } from "./cache/cache-monitor.js";
 import { FileMetadataService } from "./cache/file-metadata.js";
 import { OperationCache } from "./cache/operation-cache.js";
 import { CachedResourceManager } from "./cache/cached-resource-manager.js";
@@ -45,12 +46,11 @@ async function main() {
   const npmManager = new NpmManager(workspaceRoot);
   const fileUtils = new FileUtils();
   
-  const cacheManager = new CacheManager({
-    fileMetadataTTL: 300, // 5 minutes
-    operationResultTTL: 1800, // 30 minutes
-    projectStructureTTL: 900, // 15 minutes
-    maxKeys: 1000,
-  });
+  // Phase 6: Create cache configuration and monitoring
+  const cacheConfig = createCacheConfig();
+  const cacheManager = new CacheManager(cacheConfig);
+  const cacheMonitor = new CacheMonitor(cacheManager, cacheConfig);
+  
   const fileMetadataService = new FileMetadataService(cacheManager);
   const operationCache = new OperationCache(cacheManager, fileMetadataService);
 
@@ -85,6 +85,13 @@ async function main() {
     operationCache.invalidateByFiles([filePath]);
   });
 
+  // Phase 6: Start cache monitoring
+  console.error("Starting cache monitoring system...");
+  cacheMonitor.startMonitoring();
+  if (cacheConfig.enableAutoCleanup) {
+    cacheMonitor.startAutoCleanup();
+  }
+
   // Create and configure MCP server
   const server = createMcpServer();
   setupServerHandlers(
@@ -94,6 +101,7 @@ async function main() {
     fileUtils, 
     fileMetadataService, 
     cacheManager, 
+    cacheMonitor,
     workspaceRoot,
     cachedResourceManager
   );
@@ -105,4 +113,15 @@ async function main() {
 main().catch((error) => {
   console.error("Server error:", error);
   process.exit(1);
+});
+
+// Cleanup on process exit
+process.on('SIGINT', () => {
+  console.error('\nShutting down MCP server...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.error('\nShutting down MCP server...');
+  process.exit(0);
 });
