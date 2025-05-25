@@ -121,31 +121,31 @@ src/handlers/
 **From `createToolHandlers` function (lines 319-1065), copy exact handler implementations:**
 
 **To `project-state-tools.ts`:**
-- [ ] Copy `get_project_status` handler (lines 330-350)
-- [ ] Copy `refresh_changes` handler (lines 351-370)
-- [ ] Copy `has_file_changed` handler (lines 427-475)
+- [x] Copy `get_project_status` handler (lines 330-350)
+- [x] Copy `refresh_changes` handler (lines 351-370)
+- [x] Copy `has_file_changed` handler (lines 427-475)
 
 **To `package-tools.ts`:**
-- [ ] Copy `install_dependency` handler (lines 371-390)
-- [ ] Copy `uninstall_dependency` handler (lines 391-410)
+- [x] Copy `install_dependency` handler (lines 371-390)
+- [x] Copy `uninstall_dependency` handler (lines 391-410)
 
 **To `file-tools.ts`:**
-- [ ] Copy `get_file_metadata` handler (lines 411-426)
-- [ ] Copy `get_file_summary` handler (lines 715-780)
+- [x] Copy `get_file_metadata` handler (lines 411-426)
+- [x] Copy `get_file_summary` handler (lines 715-780)
 
 **To `dev-ops-tools.ts`:**
-- [ ] Copy `cache_typescript_check` handler (lines 476-497)
-- [ ] Copy `cache_lint_results` handler (lines 498-550)
-- [ ] Copy `cache_test_results` handler (lines 551-577)
-- [ ] Copy `get_cached_operation` handler (lines 578-625)
+- [x] Copy `cache_typescript_check` handler (lines 476-497)
+- [x] Copy `cache_lint_results` handler (lines 498-550)
+- [x] Copy `cache_test_results` handler (lines 551-577)
+- [x] Copy `get_cached_operation` handler (lines 578-625)
 
 **To `analysis-tools.ts`:**
-- [ ] Copy `get_project_outline` handler (lines 626-714)
+- [x] Copy `get_project_outline` handler (lines 626-714)
 
 **To `cache-tools.ts`:**
-- [ ] Copy `clear_cache` handler (lines 781-840)
-- [ ] Copy `get_cache_stats` handler (lines 841-900)
-- [ ] Copy `warm_cache` handler (lines 901-1060)
+- [x] Copy `clear_cache` handler (lines 781-840)
+- [x] Copy `get_cache_stats` handler (lines 841-900)
+- [x] Copy `warm_cache` handler (lines 901-1060)
 
 #### STEP 4: Create Unified Index File
 - [ ] Create `src/handlers/tools/index.ts`

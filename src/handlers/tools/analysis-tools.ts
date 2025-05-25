@@ -39,3 +39,89 @@ export const analysisTools: Tool[] = [
     },
   },
 ];
+
+export function createAnalysisHandlers(
+  cacheManager: ICacheManager,
+  fileMetadataService: IFileMetadataService,
+  workspaceRoot: string
+): Record<string, ToolHandler> {
+  // Initialize analysis services
+  const projectOutlineGenerator = new ProjectOutlineGenerator(cacheManager, fileMetadataService, workspaceRoot);
+
+  return {
+    get_project_outline: async (args: any) => {
+      try {
+        const { maxDepth, excludePatterns, includeHidden, includeSizes } = args as {
+          maxDepth?: number;
+          excludePatterns?: string[];
+          includeHidden?: boolean;
+          includeSizes?: boolean;
+        };
+
+        const outline = await projectOutlineGenerator.getProjectOutline({
+          maxDepth,
+          excludePatterns,
+          includeHidden,
+          includeSizes,
+        });
+
+        // Helper function to format bytes
+        const formatBytes = (bytes: number): string => {
+          if (bytes === 0) return '0 B';
+          const k = 1024;
+          const sizes = ['B', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+        };
+
+        // Helper function to format directory tree
+        const formatDirectoryTree = (node: any, depth: number = 0): string => {
+          const indent = '  '.repeat(depth);
+          const icon = node.type === 'directory' ? '📁' : '📄';
+          const sizeInfo = node.size ? ` (${formatBytes(node.size)})` : '';
+          let result = `${indent}${icon} ${node.name}${sizeInfo}\n`;
+          
+          if (node.children) {
+            for (const child of node.children) {
+              result += formatDirectoryTree(child, depth + 1);
+            }
+          }
+          
+          return result;
+        };
+
+        const treeView = formatDirectoryTree(outline.structure);
+        
+        const fileTypesList = Object.entries(outline.fileTypes)
+          .sort(([,a], [,b]) => (b as number) - (a as number))
+          .map(([type, count]) => `  ${type}: ${count} files`)
+          .join('\n');
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Project Outline (Generated: ${outline.timestamp.toISOString()})
+
+📊 Project Statistics:
+  Total Files: ${outline.stats.totalFiles}
+  Total Directories: ${outline.stats.totalDirectories}
+  Total Size: ${formatBytes(outline.stats.totalSize)}
+
+📋 File Types Distribution:
+${fileTypesList}
+
+🌳 Directory Structure:
+${treeView}
+
+Raw Data:
+${JSON.stringify(outline, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Failed to generate project outline: ${error.message}`);
+      }
+    },
+  };
+}

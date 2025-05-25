@@ -40,3 +40,51 @@ export const packageTools: Tool[] = [
     },
   },
 ];
+
+export function createPackageHandlers(
+  npmManager: INpmManager
+): Record<string, ToolHandler> {
+  return {
+    install_dependency: async (args: any) => {
+      const { packageName, isDev } = args as { packageName: string; isDev?: boolean };
+      
+      if (!packageName || typeof packageName !== "string") {
+        throw new Error("packageName is required and must be a string");
+      }
+
+      const result = await npmManager.install(packageName, Boolean(isDev));
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.success 
+              ? `Successfully installed ${packageName}${isDev ? ' as dev dependency' : ''}:\n${result.output}`
+              : `Failed to install ${packageName}:\n${result.error || result.output}`,
+          },
+        ],
+      };
+    },
+
+    uninstall_dependency: async (args: any) => {
+      const { packageName } = args as { packageName: string };
+      
+      if (!packageName || typeof packageName !== "string") {
+        throw new Error("packageName is required and must be a string");
+      }
+
+      const result = await npmManager.uninstall(packageName);
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.success 
+              ? `Successfully uninstalled ${packageName}:\n${result.output}`
+              : `Failed to uninstall ${packageName}:\n${result.error || result.output}`,
+          },
+        ],
+      };
+    },
+  };
+}
