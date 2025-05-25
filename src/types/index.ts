@@ -2,6 +2,23 @@
  * Shared types and interfaces for the MCP Project Change Tracker
  */
 
+// Re-export cache types for convenience
+export type {
+  FileMetadata,
+  CacheConfiguration,
+  CacheStats,
+  CachedOperationResult,
+  TypeScriptCheckResult,
+  LintResult,
+  TestResult,
+  OperationType,
+  FileChangeComparisonResult,
+  BatchFileChangeResult,
+  ICacheManager,
+  IFileMetadataService,
+  IOperationCache,
+} from "./cache.js";
+
 export interface ProjectStatus {
   dirty: boolean;
   version: number;
@@ -39,6 +56,10 @@ export interface IChangeTracker {
     lastScan: Date;
     changedFiles: string[];
   };
+  // Enhanced change tracking methods
+  getChangesSince(timestamp: Date): string[];
+  getChangesSinceVersion(version: number): string[];
+  getChangeHistory(): Array<{ file: string; timestamp: Date; version: number }>;
 }
 
 export interface IFileWatcher {
