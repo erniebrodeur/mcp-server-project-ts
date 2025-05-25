@@ -22,6 +22,8 @@ import { FileWatcher } from "./tracking/file-watcher.js";
 import { ChangeTracker } from "./tracking/change-tracker.js";
 import { NpmManager } from "./dependencies/npm-manager.js";
 import { FileUtils } from "./utils/file-utils.js";
+import { CacheManager } from "./cache/cache-manager.js";
+import { FileMetadataService } from "./cache/file-metadata.js";
 
 async function main() {
   // Parse CLI arguments and setup configuration
@@ -35,16 +37,27 @@ async function main() {
   const fileWatcher = new FileWatcher();
   const npmManager = new NpmManager(workspaceRoot);
   const fileUtils = new FileUtils();
+  
+  // Initialize cache services
+  const cacheManager = new CacheManager({
+    fileMetadataTTL: 300, // 5 minutes
+    operationResultTTL: 1800, // 30 minutes
+    projectStructureTTL: 900, // 15 minutes
+    maxKeys: 1000,
+  });
+  const fileMetadataService = new FileMetadataService(cacheManager);
 
   // Setup file watching
   fileWatcher.start(workspaceRoot, config);
   fileWatcher.on('change', (filePath) => {
     changeTracker.markDirty(filePath);
+    // Clear cache for changed files
+    fileMetadataService.clearMetadataCache(filePath);
   });
 
   // Create and configure MCP server
   const server = createMcpServer();
-  setupServerHandlers(server, changeTracker, npmManager, fileUtils, workspaceRoot);
+  setupServerHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, workspaceRoot);
 
   // Start the server
   await startServer(server);

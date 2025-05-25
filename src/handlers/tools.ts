@@ -3,7 +3,7 @@
  */
 
 import { Tool, ListToolsRequestSchema, CallToolRequestSchema } from "../types/mcp.js";
-import type { IChangeTracker, INpmManager, IFileUtils, ToolHandler } from "../types/index.js";
+import type { IChangeTracker, INpmManager, IFileUtils, ToolHandler, IFileMetadataService } from "../types/index.js";
 
 export const tools: Tool[] = [
   {
@@ -59,12 +59,49 @@ export const tools: Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "get_file_metadata",
+    description: "Get file metadata (size, last modified, content hash) without reading the file content. This allows agents to check if files need re-reading without loading the content first, significantly improving efficiency for large files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filePaths: {
+          type: "array",
+          items: {
+            type: "string"
+          },
+          description: "Array of file paths to get metadata for (can be relative or absolute paths)",
+        },
+      },
+      required: ["filePaths"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "has_file_changed",
+    description: "Check which files have actually changed by comparing current content hashes with provided hashes. This is the core anti-duplication tool - agents can avoid re-reading files that haven't actually changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fileHashMap: {
+          type: "object",
+          description: "Object mapping file paths to their last-known content hashes",
+          additionalProperties: {
+            type: "string"
+          },
+        },
+      },
+      required: ["fileHashMap"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 export function createToolHandlers(
   changeTracker: IChangeTracker,
   npmManager: INpmManager,
   fileUtils: IFileUtils,
+  fileMetadataService: IFileMetadataService,
   workspaceRoot: string
 ) {
   const handlers: Record<string, ToolHandler> = {
@@ -146,6 +183,72 @@ export function createToolHandlers(
         ],
       };
     },
+
+    get_file_metadata: async (args: any) => {
+      const { filePaths } = args as { filePaths: string[] };
+      
+      if (!Array.isArray(filePaths) || filePaths.length === 0) {
+        throw new Error("filePaths is required and must be a non-empty array");
+      }
+
+      try {
+        const metadata = await fileMetadataService.getMetadataBatch(filePaths);
+        
+        const results = metadata.map(meta => ({
+          path: meta.path,
+          size: meta.size,
+          lastModified: meta.lastModified.toISOString(),
+          contentHash: meta.contentHash,
+          exists: meta.exists,
+        }));
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `File metadata for ${filePaths.length} files:\n${JSON.stringify(results, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Failed to get file metadata: ${error.message}`);
+      }
+    },
+
+    has_file_changed: async (args: any) => {
+      const { fileHashMap } = args as { fileHashMap: Record<string, string> };
+      
+      if (!fileHashMap || typeof fileHashMap !== "object") {
+        throw new Error("fileHashMap is required and must be an object");
+      }
+
+      try {
+        const result = await fileMetadataService.compareWithHashes(fileHashMap);
+        
+        const summary = {
+          totalChecked: result.totalChecked,
+          changedCount: result.changedCount,
+          changedFiles: result.changedFiles.map(file => ({
+            path: file.path,
+            changed: file.changed,
+            reason: file.reason,
+            oldHash: file.oldHash,
+            newHash: file.newHash,
+          })),
+        };
+
+        return {
+          content: [
+            {
+              type: "text", 
+              text: `File change analysis:\n${JSON.stringify(summary, null, 2)}`,
+            },
+          ],
+        };
+      } catch (error: any) {
+        throw new Error(`Failed to check file changes: ${error.message}`);
+      }
+    },
   };
 
   return handlers;
@@ -156,9 +259,10 @@ export function registerToolHandlers(
   changeTracker: IChangeTracker,
   npmManager: INpmManager,
   fileUtils: IFileUtils,
+  fileMetadataService: IFileMetadataService,
   workspaceRoot: string
 ): void {
-  const handlers = createToolHandlers(changeTracker, npmManager, fileUtils, workspaceRoot);
+  const handlers = createToolHandlers(changeTracker, npmManager, fileUtils, fileMetadataService, workspaceRoot);
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return { tools };
