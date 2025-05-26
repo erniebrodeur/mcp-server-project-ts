@@ -9,6 +9,9 @@ export {
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   Tool,
   Resource,
+  Prompt,
 } from "@modelcontextprotocol/sdk/types.js";

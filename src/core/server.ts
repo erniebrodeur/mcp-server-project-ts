@@ -6,6 +6,7 @@ import { Server, StdioServerTransport } from "../types/mcp.js";
 import type { IChangeTracker, INpmManager, IFileUtils, IFileMetadataService, ICacheManager, ICachedResourceManager, ICacheMonitor } from "../types/index.js";
 import { registerToolHandlers } from "../handlers/tools.js";
 import { registerResourceHandlers } from "../handlers/resources.js";
+import { registerPromptHandlers } from "../handlers/prompts.js";
 
 export function createMcpServer(): Server {
   return new Server(
@@ -45,6 +46,7 @@ export function setupServerHandlers(
 ): void {
   registerToolHandlers(server, changeTracker, npmManager, fileUtils, fileMetadataService, cacheManager, cacheMonitor, workspaceRoot);
   registerResourceHandlers(server, fileUtils, workspaceRoot, cachedResourceManager);
+  registerPromptHandlers(server);
 }
 
 export async function startServer(server: Server): Promise<void> {
