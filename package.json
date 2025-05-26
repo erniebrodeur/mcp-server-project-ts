@@ -1,5 +1,5 @@
 {
-  "name": "mcp-server",
+  "name": "mcp-server-project-ts",
   "version": "1.0.0",
   "description": "MCP server for JS/TS project change detection and more.",
   "type": "module",
