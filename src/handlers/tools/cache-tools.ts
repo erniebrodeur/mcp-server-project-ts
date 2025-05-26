@@ -349,9 +349,9 @@ ${JSON.stringify(history, null, 2)}`;
         if (backgroundMode) {
           // Start warming in background and return immediately
           Promise.allSettled(warmingPromises).then(() => {
-            console.log(`Cache warming completed: ${results.join(', ')}`);
+            // Cache warming completed silently
           }).catch(error => {
-            console.error('Cache warming error:', error);
+            // Cache warming error handled silently
           });
 
           return {

@@ -99,7 +99,7 @@ export class OperationCache implements IOperationCache {
       const result = await this.fileMetadataService.compareWithHashes(cached.fileHashes);
       return result.changedCount === 0;
     } catch (error) {
-      console.warn('Failed to validate cached operation:', error);
+      // Validation failed silently
       return false;
     }
   }

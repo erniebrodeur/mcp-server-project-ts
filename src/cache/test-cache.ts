@@ -73,12 +73,12 @@ export class TestCache {
       // No tests affected, return cached results if available
       const cached = await this.getCachedResult();
       if (cached) {
-        console.log('No tests affected by changes, using cached results');
+        // Using cached results for unchanged tests
         return cached;
       }
     }
     
-    console.log(`Running ${affectedTestFiles.length} potentially affected test files...`);
+    // Running affected test files
     return await this.runTests(affectedTestFiles.join('|'));
   }
 

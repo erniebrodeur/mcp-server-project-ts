@@ -38,18 +38,6 @@ export function setupServerHandlers(
 }
 
 export async function startServer(server: Server): Promise<void> {
-  console.error("MCP Project Change Tracker starting...");
-  console.error("Server will ONLY track file changes - no content reading");
-  console.error("Tools available: get_project_status, refresh_changes, install_dependency, uninstall_dependency, get_file_metadata, has_file_changed");
-  console.error("Phase 3 Cache Tools: cache_typescript_check, cache_lint_results, cache_test_results, get_cached_operation");
-  console.error("Phase 4 Summary Tools: get_project_outline, get_file_summary");
-  console.error("Phase 5 Cache Resources: cache://typescript-errors, cache://lint-results, cache://test-results");
-  console.error("Phase 5 Metadata Resources: metadata://file-hashes, metadata://project-structure");
-  console.error("Phase 6 Cache Management: clear_cache, get_cache_stats, warm_cache");
-  console.error("Resources available: package.json, tsconfig.json");
-
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  
-  console.error("MCP Server connected and ready!");
 }

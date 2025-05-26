@@ -42,13 +42,13 @@ export class CacheManager implements ICacheManager {
 
     this.stats = { hits: 0, misses: 0 };
 
-    // Listen for cache events
+    // Listen for cache events - silent operation
     this.cache.on("expired", (key, value) => {
-      console.log(`Cache key expired: ${key}`);
+      // Cache key expired
     });
 
     this.cache.on("del", (key, value) => {
-      console.log(`Cache key deleted: ${key}`);
+      // Cache key deleted  
     });
   }
 
@@ -145,12 +145,6 @@ export class CacheManager implements ICacheManager {
    * Log cache performance summary
    */
   logPerformanceSummary(): void {
-    const stats = this.getStats();
-    const efficiency = this.getEfficiencyRatio();
-    
-    console.log(`Cache Performance Summary:
-      - Hit Rate: ${(efficiency * 100).toFixed(1)}% (${stats.hits}/${stats.hits + stats.misses})
-      - Total Keys: ${stats.keys}
-      - Memory Usage: ${(stats.vsize / 1024).toFixed(1)}KB values, ${(stats.ksize / 1024).toFixed(1)}KB keys`);
+    // Performance logging available but silent by default
   }
 }

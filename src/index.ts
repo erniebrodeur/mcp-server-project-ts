@@ -38,8 +38,6 @@ async function main() {
   const { workspaceRoot } = parseCliArgs();
   const config = createServerConfig(workspaceRoot);
 
-  console.error(`Watching workspace: ${workspaceRoot}`);
-
   // Initialize components
   const changeTracker = new ChangeTracker();
   const fileWatcher = new FileWatcher();
@@ -86,7 +84,6 @@ async function main() {
   });
 
   // Phase 6: Start cache monitoring
-  console.error("Starting cache monitoring system...");
   cacheMonitor.startMonitoring();
   if (cacheConfig.enableAutoCleanup) {
     cacheMonitor.startAutoCleanup();
@@ -117,11 +114,9 @@ main().catch((error) => {
 
 // Cleanup on process exit
 process.on('SIGINT', () => {
-  console.error('\nShutting down MCP server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error('\nShutting down MCP server...');
   process.exit(0);
 });
