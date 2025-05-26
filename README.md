@@ -6,7 +6,8 @@ A **Model Context Protocol (MCP) compliant server** for TypeScript/JavaScript pr
 
 This MCP server provides AI agents with structured tools to:
 - Track file changes in TypeScript/JavaScript projects
-- Manage npm dependencies
+- Comprehensive npm dependency management (install, uninstall, update, audit)
+- Execute npm scripts with real-time output
 - Get project status information
 - Clear change tracking state
 
@@ -79,6 +80,77 @@ This MCP server provides AI agents with structured tools to:
   }
 }
 ```
+
+### 5. `update_dependency`
+**Description**: Update a specific npm package to the latest compatible version.
+
+**Parameters**:
+- `packageName` (required): Name of the package to update
+
+**Usage**:
+```json
+{
+  "name": "update_dependency",
+  "arguments": {
+    "packageName": "lodash"
+  }
+}
+```
+
+### 6. `check_outdated`
+**Description**: Check for outdated packages in the project. Lists all packages with newer versions available.
+
+**Usage**:
+```json
+{
+  "name": "check_outdated",
+  "arguments": {}
+}
+```
+
+**Returns**: JSON formatted list of outdated packages with current, wanted, and latest versions.
+
+### 7. `run_npm_script`
+**Description**: Execute a script defined in package.json. Provides real-time output from script execution.
+
+**Parameters**:
+- `scriptName` (required): Name of the script to run (must be defined in package.json scripts)
+
+**Usage**:
+```json
+{
+  "name": "run_npm_script",
+  "arguments": {
+    "scriptName": "build"
+  }
+}
+```
+
+### 8. `list_scripts`
+**Description**: List all available npm scripts defined in package.json with their commands.
+
+**Usage**:
+```json
+{
+  "name": "list_scripts",
+  "arguments": {}
+}
+```
+
+**Returns**: Formatted list of script names and their commands.
+
+### 9. `npm_audit`
+**Description**: Run npm audit to check for security vulnerabilities in dependencies.
+
+**Usage**:
+```json
+{
+  "name": "npm_audit",
+  "arguments": {}
+}
+```
+
+**Returns**: JSON formatted security audit results with vulnerability details and metadata.
 
 ## What It Doesn't Do ❌
 

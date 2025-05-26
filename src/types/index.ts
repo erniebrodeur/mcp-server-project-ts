@@ -89,6 +89,11 @@ export interface IFileWatcher {
 export interface INpmManager {
   install(packageName: string, isDev?: boolean): Promise<DependencyOperation>;
   uninstall(packageName: string): Promise<DependencyOperation>;
+  update(packageName: string): Promise<DependencyOperation>;
+  checkOutdated(): Promise<DependencyOperation>;
+  runScript(scriptName: string): Promise<DependencyOperation>;
+  listScripts(): Promise<DependencyOperation>;
+  audit(): Promise<DependencyOperation>;
 }
 
 export interface IFileUtils {

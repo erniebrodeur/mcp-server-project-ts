@@ -45,45 +45,45 @@ Add the actual npm command execution for new operations
 ## Implementation Steps
 
 ### Step 1: Extend Types and Interfaces
-- [ ] Add new methods to `INpmManager` interface in `src/types/index.ts`
-  - [ ] `update(packageName: string): Promise<DependencyOperation>`
-  - [ ] `checkOutdated(): Promise<DependencyOperation>`
-  - [ ] `runScript(scriptName: string): Promise<DependencyOperation>`
-  - [ ] `listScripts(): Promise<DependencyOperation>`
-  - [ ] `audit(): Promise<DependencyOperation>`
+- [x] Add new methods to `INpmManager` interface in `src/types/index.ts`
+  - [x] `update(packageName: string): Promise<DependencyOperation>`
+  - [x] `checkOutdated(): Promise<DependencyOperation>`
+  - [x] `runScript(scriptName: string): Promise<DependencyOperation>`
+  - [x] `listScripts(): Promise<DependencyOperation>`
+  - [x] `audit(): Promise<DependencyOperation>`
 
 ### Step 2: Implement NpmManager Methods
-- [ ] Extend `src/dependencies/npm-manager.ts` with new methods
-  - [ ] Add `update()` method - runs `npm update <package>`
-  - [ ] Add `checkOutdated()` method - runs `npm outdated --json`
-  - [ ] Add `runScript()` method - runs `npm run <script>` with streaming
-  - [ ] Add `listScripts()` method - reads package.json scripts section
-  - [ ] Add `audit()` method - runs `npm audit --json`
-  - [ ] Handle streaming output for `runScript()` method
+- [x] Extend `src/dependencies/npm-manager.ts` with new methods
+  - [x] Add `update()` method - runs `npm update <package>`
+  - [x] Add `checkOutdated()` method - runs `npm outdated --json`
+  - [x] Add `runScript()` method - runs `npm run <script>` with streaming
+  - [x] Add `listScripts()` method - reads package.json scripts section
+  - [x] Add `audit()` method - runs `npm audit --json`
+  - [x] Handle streaming output for `runScript()` method
 
 ### Step 3: Create New MCP Tools
-- [ ] Add new tools to `src/handlers/tools/package-tools.ts`
-  - [ ] `update_dependency` tool with JSON schema
-  - [ ] `check_outdated` tool with JSON schema
-  - [ ] `run_npm_script` tool with JSON schema
-  - [ ] `list_scripts` tool with JSON schema
-  - [ ] `npm_audit` tool with JSON schema
+- [x] Add new tools to `src/handlers/tools/package-tools.ts`
+  - [x] `update_dependency` tool with JSON schema
+  - [x] `check_outdated` tool with JSON schema
+  - [x] `run_npm_script` tool with JSON schema
+  - [x] `list_scripts` tool with JSON schema
+  - [x] `npm_audit` tool with JSON schema
 
 ### Step 4: Create Tool Handlers
-- [ ] Add handlers in `createPackageHandlers()` function
-  - [ ] `update_dependency` handler
-  - [ ] `check_outdated` handler
-  - [ ] `run_npm_script` handler
-  - [ ] `list_scripts` handler
-  - [ ] `npm_audit` handler
-  - [ ] Ensure consistent error handling across all handlers
+- [x] Add handlers in `createPackageHandlers()` function
+  - [x] `update_dependency` handler
+  - [x] `check_outdated` handler
+  - [x] `run_npm_script` handler
+  - [x] `list_scripts` handler
+  - [x] `npm_audit` handler
+  - [x] Ensure consistent error handling across all handlers
 
 ### Step 5: Testing
-- [ ] Model after the phase tests (test-phase2-tools.js, test-phase3-tools.js, etc.)
+- [x] Model after the phase tests (test-phase2-tools.js, test-phase3-tools.js, etc.)
 
 ### Step 6: Documentation
-- [ ] Update README.md with new tool descriptions
-- [ ] Add usage examples for each new tool
+- [x] Update README.md with new tool descriptions
+- [x] Add usage examples for each new tool
 
 ---
 
