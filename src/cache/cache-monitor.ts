@@ -47,11 +47,11 @@ export class CacheMonitor implements ICacheMonitor {
         this.collectMetrics();
         this.analyzePerformance();
       } catch (error) {
-        console.error('Cache monitoring error:', error);
+        // Cache monitoring error handled silently
       }
     }, this.config.monitoringInterval);
 
-    console.log(`Cache monitoring started (interval: ${this.config.monitoringInterval}ms)`);
+    // Cache monitoring started
   }
 
   /**
@@ -61,7 +61,7 @@ export class CacheMonitor implements ICacheMonitor {
     if (this.monitoringTimer) {
       clearInterval(this.monitoringTimer);
       this.monitoringTimer = undefined;
-      console.log('Cache monitoring stopped');
+      // Cache monitoring stopped
     }
   }
 
@@ -77,11 +77,11 @@ export class CacheMonitor implements ICacheMonitor {
       try {
         this.performAutoCleanup();
       } catch (error) {
-        console.error('Cache auto-cleanup error:', error);
+        // Cache auto-cleanup error handled silently
       }
     }, this.config.cleanupInterval);
 
-    console.log(`Cache auto-cleanup started (interval: ${this.config.cleanupInterval}ms)`);
+    // Cache auto-cleanup started
   }
 
   /**
@@ -91,7 +91,7 @@ export class CacheMonitor implements ICacheMonitor {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
-      console.log('Cache auto-cleanup stopped');
+      // Cache auto-cleanup stopped
     }
   }
 
@@ -160,7 +160,7 @@ export class CacheMonitor implements ICacheMonitor {
         break;
     }
 
-    console.log(`Cache cleanup completed: ${clearedCount} entries removed using ${strategy} strategy`);
+    // Cache cleanup completed silently
     return clearedCount;
   }
 
@@ -209,7 +209,7 @@ ${health.recommendations.map(rec => `- ${rec}`).join('\n')}
     this.stopMonitoring();
     this.stopAutoCleanup();
     this.performanceHistory = [];
-    console.log('Cache monitor disposed');
+    // Cache monitor disposed
   }
 
   // Private methods
@@ -230,15 +230,15 @@ ${health.recommendations.map(rec => `- ${rec}`).join('\n')}
 
     const health = this.lastSnapshot.health;
     
-    // Log warnings for poor performance
+    // Monitor performance thresholds silently
     if (health.efficiency < this.config.logPerformanceThreshold) {
-      console.warn(`Cache efficiency below threshold: ${(health.efficiency * 100).toFixed(1)}% (threshold: ${(this.config.logPerformanceThreshold * 100).toFixed(1)}%)`);
+      // Cache efficiency below threshold
     }
     
     if (health.memoryUsage > 0.9) {
-      console.warn(`Cache memory usage critical: ${(health.memoryUsage * 100).toFixed(1)}%`);
+      // Cache memory usage critical
     } else if (health.memoryUsage > 0.8) {
-      console.warn(`Cache memory usage high: ${(health.memoryUsage * 100).toFixed(1)}%`);
+      // Cache memory usage high
     }
   }
 
@@ -246,7 +246,7 @@ ${health.recommendations.map(rec => `- ${rec}`).join('\n')}
     const health = this.getHealthMetrics();
     
     if (health.memoryUsage > this.config.cleanupThreshold) {
-      console.log(`Auto-cleanup triggered: memory usage ${(health.memoryUsage * 100).toFixed(1)}% > threshold ${(this.config.cleanupThreshold * 100).toFixed(1)}%`);
+      // Auto-cleanup triggered silently
       
       // Start with LRU cleanup
       let cleaned = this.performLRUCleanup();
@@ -256,7 +256,7 @@ ${health.recommendations.map(rec => `- ${rec}`).join('\n')}
         cleaned += this.performAgeBasedCleanup();
       }
       
-      console.log(`Auto-cleanup completed: ${cleaned} entries removed`);
+      // Auto-cleanup completed silently
     }
   }
 
