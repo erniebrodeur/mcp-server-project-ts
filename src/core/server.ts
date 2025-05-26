@@ -7,12 +7,19 @@ import type { IChangeTracker, INpmManager, IFileUtils, IFileMetadataService, ICa
 import { registerToolHandlers } from "../handlers/tools.js";
 import { registerResourceHandlers } from "../handlers/resources.js";
 import { registerPromptHandlers } from "../handlers/prompts.js";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-8"));
 
 export function createMcpServer(): Server {
   return new Server(
     {
-      name: "mcp-project-tracker",
-      version: "0.1.0",
+      name: "mcp-server-project-ts",
+      version: packageJson.version,
       description: "Comprehensive TypeScript/JavaScript project management server providing file change tracking, NPM dependency management, intelligent caching for dev operations (TypeScript/lint/test), project analysis tools, and resource-based access to cached metadata. Designed for AI agents to efficiently understand and manage JavaScript/TypeScript codebases without reading file contents directly."
     },
     {

@@ -208,9 +208,9 @@ Configure in Claude Desktop, Cursor, etc.:
 ```json
 {
   "mcpServers": {
-    "project-tracker": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js", "--workspaceRoot", "/path/to/project"]
+    "mcp-server-project-ts": {
+      "command": "npx",
+      "args": ["mcp-server-project-ts", "--workspaceRoot", "/path/to/project"]
     }
   }
 }

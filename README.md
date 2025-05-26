@@ -35,59 +35,52 @@ This MCP server provides AI agents with structured tools to track file changes a
 
 ### Prerequisites
 - Node.js 20+
-- npm or pnpm
-- A TypeScript/JavaScript project with `tsconfig.json`
+- npm (comes with Node.js)
+- A TypeScript/JavaScript project
 
-### Quick Start
+### Quick Start with npx (Recommended)
 ```bash
-# Clone the repository
-git clone <this-repo> mcp-server
-cd mcp-server
+# Run directly with npx - no installation needed!
+npx mcp-server-project-ts --workspaceRoot /path/to/your/project
+```
 
-# Install dependencies
-npm install
+### Alternative: Global Installation
+```bash
+# Install globally for repeated use
+npm install -g mcp-server-project-ts
 
-# Build the server
-npm run build
-
-# Start the server
-npm start -- --workspaceRoot /path/to/your/project
+# Then run anywhere
+mcp-server-project --workspaceRoot /path/to/your/project
 ```
 
 ## 🔧 Usage
 
-### As MCP Server (Recommended)
-The server uses **stdio transport** as per MCP specification:
+### VS Code Integration
+Add to your VS Code settings or MCP configuration:
 
-```bash
-node dist/index.js --workspaceRoot /path/to/your/project
-```
-
-### Integration with AI Clients
-
-**Claude Desktop / Cursor:**
 ```json
 {
   "mcpServers": {
-    "project-tracker": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js", "--workspaceRoot", "/path/to/project"]
+    "mcp-server-project-ts": {
+      "command": "npx",
+      "args": ["mcp-server-project-ts", "--workspaceRoot", "${workspaceFolder}"]
     }
   }
 }
 ```
 
-**OpenAI Agents SDK:**
-```python
-from openai_agents_python.mcp import MCPServerStdio
+### Claude Desktop Integration
+Add to your Claude Desktop configuration file:
 
-async with MCPServerStdio(
-    params={
-        "command": "node",
-        "args": ["/path/to/dist/index.js", "--workspaceRoot", "/path/to/project"],
+```json
+{
+  "mcpServers": {
+    "mcp-server-project-ts": {
+      "command": "npx",
+      "args": ["mcp-server-project-ts", "--workspaceRoot", "/path/to/your/project"]
     }
-) as server:
-    tools = await server.list_tools()
+  }
+}
 ```
 
 ## 🏗️ Development
