@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * MCP Server – TypeScript/JavaScript Project Change Tracker
  * ----------------------------------------------------------
