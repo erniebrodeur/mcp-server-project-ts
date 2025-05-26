@@ -135,51 +135,75 @@ export class TestCache {
   }
 
   /**
-   * Try different test runners
+   * Try different test runners with better detection
    */
   private async tryTestRunners(testPattern?: string) {
-    const testCommands = [
-      // Jest
-      {
-        cmd: 'npx',
-        args: ['jest', ...(testPattern ? ['--testPathPattern', testPattern] : []), '--passWithNoTests']
-      },
-      // npm test
-      {
+    // Check package.json for available test commands first
+    const hasTestScript = await this.hasTestScript();
+    const availableRunners = await this.detectAvailableRunners();
+    
+    const testCommands = [];
+    
+    // Prefer package.json test script if available
+    if (hasTestScript) {
+      testCommands.push({
         cmd: 'npm',
-        args: ['test']
-      },
-      // Vitest
+        args: ['test', ...(testPattern ? ['--', '--testPathPattern', testPattern] : [])],
+        name: 'npm test'
+      });
+    }
+    
+    // Add detected runners
+    for (const runner of availableRunners) {
+      testCommands.push(runner);
+    }
+    
+    // Fallback runners
+    testCommands.push(
       {
         cmd: 'npx',
-        args: ['vitest', 'run', ...(testPattern ? ['--reporter=verbose'] : [])]
+        args: ['jest', '--passWithNoTests', ...(testPattern ? ['--testPathPattern', testPattern] : [])],
+        name: 'jest'
       },
-      // Mocha
+      {
+        cmd: 'npx', 
+        args: ['vitest', 'run', ...(testPattern ? ['--reporter=verbose'] : [])],
+        name: 'vitest'
+      },
       {
         cmd: 'npx',
-        args: ['mocha', ...(testPattern ? [testPattern] : ['test/**/*.{js,ts}'])]
+        args: ['mocha', ...(testPattern ? [testPattern] : ['test/**/*.{js,ts}'])],
+        name: 'mocha'
       }
-    ];
+    );
 
-    for (const { cmd, args } of testCommands) {
+    let lastError = '';
+    
+    for (const { cmd, args, name } of testCommands) {
       try {
-        const result = await runCommand(cmd, args, { cwd: this.workspaceRoot });
+        const result = await runCommand(cmd, args, { 
+          cwd: this.workspaceRoot
+        });
         
-        // If command succeeded or failed with test results (not command not found)
-        if (result.success || (result.error && !result.error.includes('command not found'))) {
+        // Success or test failures (but command worked)
+        if (result.success || this.looksLikeTestOutput(result.output || result.error || '')) {
           return result;
         }
-      } catch (error) {
-        // Continue to next test runner
+        
+        lastError = result.error || 'Unknown error';
+      } catch (error: any) {
+        lastError = error.message;
+        // Continue to next runner
         continue;
       }
     }
 
-    throw new Error('No supported test runner found (tried: jest, npm test, vitest, mocha)');
+    // If we get here, no test runner worked
+    throw new Error(`No working test runner found. Last error: ${lastError}`);
   }
 
   /**
-   * Parse test output to extract statistics
+   * Parse test output to extract basic statistics (simplified)
    */
   private parseTestOutput(output: string): {
     passed: number;
@@ -187,49 +211,47 @@ export class TestCache {
     skipped: number;
     testFiles: string[];
   } {
-    let passed = 0;
-    let failed = 0;
-    let skipped = 0;
-    const testFiles: string[] = [];
+    const result = { passed: 0, failed: 0, skipped: 0, testFiles: [] as string[] };
 
     if (!output) {
-      return { passed, failed, skipped, testFiles };
+      return result;
     }
 
-    const lines = output.split('\n');
-
-    for (const line of lines) {
-      // Jest format
-      const jestMatch = line.match(/Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed/);
+    // Extract numbers using simple patterns
+    const numbers = output.match(/\d+/g)?.map(n => parseInt(n, 10)) || [];
+    
+    // Look for common test result patterns
+    const passedMatch = output.match(/(\d+)\s+(?:passed|passing|✓|√)/i);
+    const failedMatch = output.match(/(\d+)\s+(?:failed|failing|✗|×)/i);
+    const skippedMatch = output.match(/(\d+)\s+(?:skipped|pending)/i);
+    
+    if (passedMatch) result.passed = parseInt(passedMatch[1], 10);
+    if (failedMatch) result.failed = parseInt(failedMatch[1], 10);
+    if (skippedMatch) result.skipped = parseInt(skippedMatch[1], 10);
+    
+    // If no specific patterns found but we have numbers, make reasonable guesses
+    if (result.passed === 0 && result.failed === 0 && numbers.length > 0) {
+      // Look for Jest-style "Tests: X failed, Y passed"
+      const jestMatch = output.match(/Tests:\s+(\d+)\s+failed,\s+(\d+)\s+passed/);
       if (jestMatch) {
-        failed = parseInt(jestMatch[1], 10);
-        passed = parseInt(jestMatch[2], 10);
-        continue;
-      }
-
-      // Alternative Jest format
-      const jestMatch2 = line.match(/(\d+)\s+passed,\s+(\d+)\s+total/);
-      if (jestMatch2) {
-        passed = parseInt(jestMatch2[1], 10);
-        continue;
-      }
-
-      // Mocha format
-      const mochaMatch = line.match(/(\d+)\s+passing.*?(\d+)\s+failing/);
-      if (mochaMatch) {
-        passed = parseInt(mochaMatch[1], 10);
-        failed = parseInt(mochaMatch[2], 10);
-        continue;
-      }
-
-      // Extract test file names
-      const fileMatch = line.match(/([^/\s]+\.(?:test|spec)\.(?:js|ts|jsx|tsx))/);
-      if (fileMatch && !testFiles.includes(fileMatch[1])) {
-        testFiles.push(fileMatch[1]);
+        result.failed = parseInt(jestMatch[1], 10);
+        result.passed = parseInt(jestMatch[2], 10);
+      } else if (numbers.length >= 2) {
+        // Simple heuristic: if tests ran, assume first number is passed, second is total or failed
+        result.passed = numbers[0];
+        if (output.includes('fail')) {
+          result.failed = numbers[1];
+        }
       }
     }
+    
+    // Extract test file names (simple pattern)
+    const fileMatches = output.match(/([^/\s]+\.(?:test|spec)\.(?:js|ts|jsx|tsx))/g);
+    if (fileMatches) {
+      result.testFiles = [...new Set(fileMatches)]; // Remove duplicates
+    }
 
-    return { passed, failed, skipped, testFiles };
+    return result;
   }
 
   /**
@@ -368,5 +390,84 @@ export class TestCache {
    */
   getStats() {
     return this.operationCache.getOperationStats('test');
+  }
+
+  /**
+   * Check if package.json has a test script
+   */
+  private async hasTestScript(): Promise<boolean> {
+    try {
+      const packageJsonPath = path.join(this.workspaceRoot, 'package.json');
+      const metadata = await this.fileMetadataService.getMetadata(packageJsonPath);
+      if (!metadata.exists) return false;
+      
+      const { readFile } = await import('node:fs/promises');
+      const content = await readFile(packageJsonPath, 'utf-8');
+      const pkg = JSON.parse(content);
+      return pkg.scripts && pkg.scripts.test;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Detect available test runners
+   */
+  private async detectAvailableRunners(): Promise<Array<{cmd: string, args: string[], name: string}>> {
+    const runners = [];
+    
+    // Check for config files to determine available runners
+    const configChecks = [
+      { file: 'jest.config.js', runner: 'jest' },
+      { file: 'jest.config.json', runner: 'jest' },
+      { file: 'vitest.config.js', runner: 'vitest' },
+      { file: 'vitest.config.ts', runner: 'vitest' },
+      { file: '.mocharc.json', runner: 'mocha' },
+      { file: '.mocharc.js', runner: 'mocha' }
+    ];
+    
+    for (const { file, runner } of configChecks) {
+      const configPath = path.join(this.workspaceRoot, file);
+      const metadata = await this.fileMetadataService.getMetadata(configPath);
+      if (metadata.exists) {
+        if (runner === 'jest') {
+          runners.push({
+            cmd: 'npx',
+            args: ['jest', '--passWithNoTests'],
+            name: 'jest (detected config)'
+          });
+        } else if (runner === 'vitest') {
+          runners.push({
+            cmd: 'npx',
+            args: ['vitest', 'run'],
+            name: 'vitest (detected config)'
+          });
+        } else if (runner === 'mocha') {
+          runners.push({
+            cmd: 'npx',
+            args: ['mocha'],
+            name: 'mocha (detected config)'
+          });
+        }
+      }
+    }
+    
+    return runners;
+  }
+
+  /**
+   * Check if output looks like test results (simple heuristic)
+   */
+  private looksLikeTestOutput(output: string): boolean {
+    const testIndicators = [
+      /\d+\s+(passing|failed|skipped)/i,
+      /Tests:\s+\d+/i,
+      /Test Suites:/i,
+      /✓|✗|√|×/,
+      /PASS|FAIL/i,
+      /describe|it\s*\(/
+    ];
+    
+    return testIndicators.some(pattern => pattern.test(output));
   }
 }
