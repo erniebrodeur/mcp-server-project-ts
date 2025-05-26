@@ -10,13 +10,23 @@ import { registerResourceHandlers } from "../handlers/resources.js";
 export function createMcpServer(): Server {
   return new Server(
     {
-      name: "project-change-tracker",
-      version: "1.0.0",
+      name: "mcp-project-tracker",
+      version: "0.1.0",
+      description: "Comprehensive TypeScript/JavaScript project management server providing file change tracking, NPM dependency management, intelligent caching for dev operations (TypeScript/lint/test), project analysis tools, and resource-based access to cached metadata. Designed for AI agents to efficiently understand and manage JavaScript/TypeScript codebases without reading file contents directly."
     },
     {
       capabilities: {
-        tools: {},
-        resources: {},
+        tools: {
+          listChanged: true
+        },
+        resources: {
+          listChanged: true,
+          subscribe: true
+        },
+        prompts: {
+          listChanged: true
+        },
+        logging: {}
       },
     }
   );
