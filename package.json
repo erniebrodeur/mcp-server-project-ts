@@ -1,7 +1,7 @@
 {
   "name": "mcp-server",
-  "version": "0.1.0",
-  "description": "MCP server for JS/TS project change detection",
+  "version": "1.0.0",
+  "description": "MCP server for JS/TS project change detection and more.",
   "type": "module",
   "scripts": {
     "build": "tsc",
